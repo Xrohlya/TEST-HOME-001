@@ -88,9 +88,7 @@ function topicArt(topic) {
   const label = topic?.group || "Speech Image";
   return `
     <div class="topic-art visual-${name} ${state.spinning ? "is-spinning" : ""}">
-      <div class="art-grid"></div>
-      <div class="art-signal"></div>
-      <div class="ram-spinner" aria-hidden="true"><span class="ram-horns">♈</span></div>
+      <div class="art-glass"></div>
       <span class="art-label">${label}</span>
     </div>
   `;
@@ -132,8 +130,12 @@ function renderToday() {
       ${topicArt(topic)}
       <div class="topic-copy">
         <div class="label">${state.spinning ? "Выбираем тему" : topic ? topic.group : "Тренажёр речи"}</div>
-        <h2 class="topic ${topic ? "" : "is-placeholder"}">${state.spinning ? "Баран крутит колесо" : topic ? topic.title : "Крутите тему под голос"}</h2>
-        <p class="hint">${state.spinning ? "Через секунду выпадет карточка с визуалом и заданием." : topic ? topic.hint : prompt}</p>
+        <div class="title-wheel ${state.spinning ? "is-spinning" : ""}">
+          <h2 class="topic ${topic ? "" : "is-placeholder"}">${state.spinning ? "Магнетический голос" : topic ? topic.title : "Крутите тему под голос"}</h2>
+          <h2 class="topic ghost-title">Речь в камеру</h2>
+          <h2 class="topic ghost-title">Чистая дикция</h2>
+        </div>
+        <p class="hint">${state.spinning ? "Заголовки прокручиваются, сейчас выпадет карточка с визуалом и заданием." : topic ? topic.hint : prompt}</p>
       </div>
       <div class="control-row">
         ${
