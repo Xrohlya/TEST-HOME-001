@@ -1,165 +1,41 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Тетрис</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#111827;color:#f9fafb;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;align-items:center;padding:12px}
-.wrap{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;justify-content:center;width:100%}
-.game{position:relative;touch-action:none}
-canvas{display:block;background:#0b1020;border:3px solid #374151;border-radius:8px;width:min(88vw,300px);height:auto;image-rendering:pixelated}
-.side{width:190px;background:#1f2937;border-radius:12px;padding:16px}.side h1{margin:0 0 12px;font-size:28px}
-.stat{display:flex;justify-content:space-between;padding:6px 0;color:#d1d5db}.stat b{color:white}
-.next{margin:10px 0 14px;background:#111827;border-radius:8px;padding:8px;text-align:center}.next canvas{width:120px;height:120px;border:0;margin:auto}
-.help{font-size:13px;line-height:1.55;color:#cbd5e1}
-.btn{width:100%;margin-top:10px;padding:11px;border:0;border-radius:8px;background:#f9fafb;color:#111827;font-weight:700;cursor:pointer;min-height:44px}
-.status{margin-top:10px;text-align:center;font-weight:700;min-height:22px}
-.mobile-controls{display:none;margin-top:12px;grid-template-columns:repeat(3,1fr);gap:8px;touch-action:none}
-.mobile-controls button{min-height:54px;border:0;border-radius:12px;background:#374151;color:#fff;font-size:24px;font-weight:700;touch-action:manipulation;-webkit-user-select:none;user-select:none}
-.mobile-controls .wide{grid-column:span 2;font-size:16px}
-.mobile-controls .accent{font-size:20px}
-@media(max-width:700px){
- body{padding:10px 10px max(10px,env(safe-area-inset-bottom))}
- .wrap{gap:10px;align-items:center}
- .side{width:min(88vw,300px);padding:12px}
- .side h1{font-size:24px;margin-bottom:8px}
- .help{display:none}
- .mobile-controls{display:grid}
- .next{display:none}
-}
-@media(min-width:701px){.mobile-controls{display:none}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ede8e0">
+  <title>Голос — мини-апп</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
-<div class="wrap">
-  <div class="game" id="gameArea">
-    <canvas id="board" width="300" height="600"></canvas>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="icon-btn" data-action="back" aria-label="Назад">‹</button>
+      <strong class="brand">Голос</strong>
+      <button class="icon-btn" data-action="menu" aria-label="Меню">⋮</button>
+    </header>
+
+    <main id="screen" class="screen"></main>
+
+    <nav class="tabbar" aria-label="Разделы">
+      <button class="tab is-active" data-tab="today">
+        <span>⌂</span>
+        Сегодня
+      </button>
+      <button class="tab" data-tab="progress">
+        <span>▥</span>
+        Прогресс
+      </button>
+      <button class="tab" data-tab="profile">
+        <span>◎</span>
+        Профиль
+      </button>
+    </nav>
   </div>
-  <aside class="side">
-    <h1>Тетрис</h1>
-    <div class="stat"><span>Счёт</span><b id="score">0</b></div>
-    <div class="stat"><span>Линии</span><b id="lines">0</b></div>
-    <div class="stat"><span>Уровень</span><b id="level">1</b></div>
-    <div class="next"><div>Следующая</div><canvas id="next" width="120" height="120"></canvas></div>
-    <div class="help">← → — движение<br>↑ — поворот<br>↓ — ускорение<br>Space — сброс<br>P — пауза</div>
-    <button class="btn" id="restart">Новая игра</button>
-    <div class="status" id="status"></div>
-    <div class="mobile-controls" aria-label="Управление на телефоне">
-      <button data-action="left" aria-label="Влево">←</button>
-      <button data-action="rotate" aria-label="Повернуть">↻</button>
-      <button data-action="right" aria-label="Вправо">→</button>
-      <button data-action="down" aria-label="Ускорить">↓</button>
-      <button data-action="drop" class="wide" aria-label="Сбросить">СБРОС</button>
-      <button data-action="pause" class="accent" aria-label="Пауза">Ⅱ</button>
-    </div>
-  </aside>
-</div>
-<script>
-const COLS=10,ROWS=20,S=30;
-const colors=['','#60a5fa','#facc15','#c084fc','#4ade80','#f87171','#22d3ee','#fb923c'];
-const shapes=[
- [[1,1,1,1]],[[2,2],[2,2]],[[0,3,0],[3,3,3]],
- [[4,0,0],[4,4,4]],[[0,0,5],[5,5,5]],[[6,6,0],[0,6,6]],[[7,0,0],[7,7,7]]
-];
-const board=document.getElementById('board'),ctx=board.getContext('2d');
-const nextCanvas=document.getElementById('next'),nctx=nextCanvas.getContext('2d');
-let grid,piece,next,score,lines,level,last=0,paused=false,over=false;
-function newGrid(){return Array.from({length:ROWS},()=>Array(COLS).fill(0))}
-function randomPiece(){const m=shapes[Math.floor(Math.random()*shapes.length)].map(r=>r.slice());return {m,x:Math.floor((COLS-m[0].length)/2),y:0}}
-function collide(p,dx=0,dy=0,m=p.m){for(let y=0;y<m.length;y++)for(let x=0;x<m[y].length;x++)if(m[y][x]&&(p.y+y+dy>=ROWS||p.x+x+dx<0||p.x+x+dx>=COLS||grid[p.y+y+dy]?.[p.x+x+dx]))return true;return false}
-function merge(){piece.m.forEach((r,y)=>r.forEach((v,x)=>{if(v)grid[piece.y+y][piece.x+x]=v}))}
-function rotate(){
- const m=piece.m, r=m[0].map((_,i)=>m.map(row=>row[i]).reverse()), old=piece.m;
- piece.m=r;
- if(collide(piece))piece.x--;
- if(collide(piece))piece.x+=2;
- if(collide(piece))piece.x--;
- if(collide(piece))piece.m=old;
-}
-function clearLines(){
- let n=0;
- grid=grid.filter(r=>{if(r.every(Boolean)){n++;return false}return true});
- while(grid.length<ROWS)grid.unshift(Array(COLS).fill(0));
- if(n){lines+=n;score += [0,100,300,500,800][n]*level;level=1+Math.floor(lines/10)}
-}
-function spawn(){
- piece=next;next=randomPiece();
- piece.x=Math.floor((COLS-piece.m[0].length)/2);piece.y=0;
- if(collide(piece)){over=true;document.getElementById('status').textContent='GAME OVER'}
-}
-function lock(){merge();clearLines();spawn();update()}
-function drop(){
- if(paused||over)return;
- if(!collide(piece,0,1)){piece.y++;score++}else lock();
- update()
-}
-function hardDrop(){
- if(paused||over)return;
- let d=0;while(!collide(piece,0,1)){piece.y++;d++}
- score+=d*2;lock()
-}
-function drawCell(c,x,y,size=S){ctx.fillStyle=colors[c];ctx.fillRect(x*size,y*size,size-1,size-1)}
-function draw(){
- ctx.clearRect(0,0,300,600);
- for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(grid[y][x])drawCell(grid[y][x],x,y);
- piece.m.forEach((r,y)=>r.forEach((v,x)=>v&&drawCell(v,piece.x+x,piece.y+y)));
- nctx.clearRect(0,0,120,120);
- const sz=24,ox=(5-next.m[0].length)/2,oy=(5-next.m.length)/2;
- next.m.forEach((r,y)=>r.forEach((v,x)=>{if(v){nctx.fillStyle=colors[v];nctx.fillRect((ox+x)*sz,(oy+y)*sz,sz-1,sz-1)}}))
-}
-function update(){
- document.getElementById('score').textContent=score;
- document.getElementById('lines').textContent=lines;
- document.getElementById('level').textContent=level;
- draw()
-}
-function loop(t=0){
- if(!last)last=t;
- const speed=Math.max(90,700-(level-1)*55);
- if(!paused&&!over&&t-last>speed){drop();last=t}
- requestAnimationFrame(loop)
-}
-function reset(){
- grid=newGrid();score=0;lines=0;level=1;paused=false;over=false;last=0;
- document.getElementById('status').textContent='';
- next=randomPiece();spawn();update()
-}
-function action(a){
- if(a==='left'&&!collide(piece,-1,0)&&!paused&&!over)piece.x--;
- if(a==='right'&&!collide(piece,1,0)&&!paused&&!over)piece.x++;
- if(a==='down')drop();
- if(a==='rotate'&&!paused&&!over)rotate();
- if(a==='drop')hardDrop();
- if(a==='pause'&&!over){paused=!paused;document.getElementById('status').textContent=paused?'ПАУЗА':''}
- update()
-}
-document.addEventListener('keydown',e=>{
- if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].includes(e.key))e.preventDefault();
- if(e.key==='ArrowLeft')action('left');
- if(e.key==='ArrowRight')action('right');
- if(e.key==='ArrowDown')action('down');
- if(e.key==='ArrowUp')action('rotate');
- if(e.key===' ')action('drop');
- if(e.key.toLowerCase()==='p')action('pause')
-});
-document.getElementById('restart').onclick=reset;
-document.querySelectorAll('.mobile-controls button').forEach(btn=>{
- btn.addEventListener('pointerdown',e=>{e.preventDefault();action(btn.dataset.action)})
-});
-let touchStartX=0,touchStartY=0;
-const gameArea=document.getElementById('gameArea');
-gameArea.addEventListener('touchstart',e=>{
- const t=e.changedTouches[0];touchStartX=t.clientX;touchStartY=t.clientY
-},{passive:true});
-gameArea.addEventListener('touchend',e=>{
- const t=e.changedTouches[0],dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;
- if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;
- if(Math.abs(dx)>Math.abs(dy))action(dx>0?'right':'left');
- else if(dy>45)action('drop'); else action('rotate');
-},{passive:true});
-reset();requestAnimationFrame(loop);
-</script>
+
+  <script src="assets/app.js"></script>
 </body>
 </html>
