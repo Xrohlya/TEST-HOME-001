@@ -67,14 +67,15 @@ function setMode(mode) {
 function pickTopic() {
   if (state.spinning) return;
   state.spinning = true;
-  state.topic = null;
   renderToday();
   window.setTimeout(() => {
     const pool = topics.filter((topic) => topic.type === state.mode);
-    state.topic = pool[Math.floor(Math.random() * pool.length)];
+    const currentId = state.topic?.id;
+    const nextPool = pool.length > 1 ? pool.filter((topic) => topic.id !== currentId) : pool;
+    state.topic = nextPool[Math.floor(Math.random() * nextPool.length)];
     state.spinning = false;
     renderToday();
-  }, 780);
+  }, 360);
 }
 
 function render() {
@@ -84,12 +85,11 @@ function render() {
 }
 
 function topicArt(topic) {
-  const name = topic?.image || "idle";
   const label = topic?.group || "Speech Image";
   return `
-    <div class="topic-art visual-${name} ${state.spinning ? "is-spinning" : ""}">
-      <div class="art-glass"></div>
+    <div class="topic-art ${state.spinning ? "is-spinning" : ""}">
       <span class="art-label">${label}</span>
+      <span class="art-caption">${topic?.title || "Магнетический голос"}</span>
     </div>
   `;
 }
@@ -97,11 +97,13 @@ function topicArt(topic) {
 function renderToday() {
   const topic = state.topic;
   const prompt = state.mode === "deep" ? "10 минут подготовки · 2 минуты речи" : "30 секунд подготовки · 1 минута речи";
+  const title = topic?.title || "Магнетический голос";
+  const hint = topic?.hint || "Тренировка звучания, дикции и уверенной подачи в стиле Speech Image.";
   screen.innerHTML = `
     <section class="brand-hero">
       <div>
         <p class="eyebrow">Школа речевого имиджа</p>
-        <h1>Speech Image Voice</h1>
+        <h1>Speech Image</h1>
       </div>
       <div class="mini-score"><b>${state.streak}</b><span>дней</span></div>
     </section>
@@ -111,9 +113,9 @@ function renderToday() {
         <div class="dots">
           ${Array.from({ length: 14 }, (_, index) => `<span class="dot ${index < state.streak ? "done" : index === state.streak ? "today" : ""}"></span>`).join("")}
         </div>
-        <p class="hint compact">14 дней речевой свободы · сегодня открыт</p>
+        <p class="hint compact">14 дней речевой свободы</p>
       </div>
-      <span class="streak-chip">серия</span>
+      <span class="streak-chip">день ${state.streak}</span>
     </section>
 
     <section class="control-row">
@@ -129,22 +131,18 @@ function renderToday() {
     <section class="hero">
       ${topicArt(topic)}
       <div class="topic-copy">
-        <div class="label">${state.spinning ? "Выбираем тему" : topic ? topic.group : "Тренажёр речи"}</div>
-        <div class="title-wheel ${state.spinning ? "is-spinning" : ""}">
-          <h2 class="topic ${topic ? "" : "is-placeholder"}">${state.spinning ? "Магнетический голос" : topic ? topic.title : "Крутите тему под голос"}</h2>
-          <h2 class="topic ghost-title">Речь в камеру</h2>
-          <h2 class="topic ghost-title">Чистая дикция</h2>
-        </div>
-        <p class="hint">${state.spinning ? "Заголовки прокручиваются, сейчас выпадет карточка с визуалом и заданием." : topic ? topic.hint : prompt}</p>
+        <div class="label">${state.spinning ? "Подбираем тему" : topic ? topic.group : "Тема дня"}</div>
+        <h2 class="topic ${topic ? "" : "is-placeholder"}">${state.spinning ? "Подбираем тему..." : title}</h2>
+        <p class="hint">${state.spinning ? "Сейчас появится новая карточка для тренировки." : hint}</p>
       </div>
       <div class="control-row">
         ${
           topic
             ? `<button class="primary-pill" data-action="start">Начать практику</button><button class="ghost-pill" data-action="reroll">Другая тема</button>`
-            : `<button class="primary-pill" data-action="spin" ${state.spinning ? "disabled" : ""}>Крутить тему</button>`
+            : `<button class="primary-pill" data-action="spin" ${state.spinning ? "disabled" : ""}>Выбрать тему</button>`
         }
       </div>
-      <div class="quota">Бесплатных AI-разборов: ${state.free} из 3 · можно тренироваться без записи</div>
+      <div class="quota">${prompt} · AI-разборов: ${state.free} из 3</div>
     </section>
   `;
 }
