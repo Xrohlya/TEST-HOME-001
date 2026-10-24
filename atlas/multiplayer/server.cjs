@@ -1,4 +1,4 @@
-const http=require('http'),crypto=require('crypto');const {createGame,act}=require('./engine.cjs');
+const http=require('http'),crypto=require('crypto');const {createGame,act,botStep}=require('./engine.cjs');
 const rooms=new Map(),limits=new Map();const origin='https://xrohlya.github.io';
 function token(){return crypto.randomBytes(24).toString('hex');}
 function send(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST,GET,OPTIONS','Access-Control-Allow-Headers':'Content-Type','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));}
@@ -18,14 +18,19 @@ const server=http.createServer(async(req,res)=>{
  const code=String(data.code||'').toUpperCase(),room=rooms.get(code);if(!room)return send(res,404,{error:'Комната не найдена или закрылась. Создай новую.'});
  if(data.type==='join'){if(room.tokens[1])return send(res,409,{error:'В комнате уже два игрока.'});const auth=token();room.tokens[1]=auth;room.seen[1]=Date.now();room.updated=Date.now();return send(res,200,{code,token:auth,slot:1});}
  const slot=room.tokens.indexOf(data.token);if(slot<0||!data.token)return send(res,403,{error:'Войди в комнату снова.'});room.seen[slot]=Date.now();room.updated=Date.now();
- if(data.type==='move'){
+ if(data.type==='bot'){
+  if(slot!==0)return send(res,403,{error:'Бота может позвать создатель комнаты.'});
+  if(room.tokens[1])return send(res,409,{error:'Союзник уже в комнате.'});
+  room.tokens[1]='bot:'+token();room.bot=true;room.version++;
+ }else if(data.type==='move'){
   if(!room.tokens[1])return send(res,409,{error:'Сначала дождись второго игрока.'});
   if(!['up','down','left','right','power'].includes(data.action))return send(res,400,{error:'Неизвестное действие'});
   act(room.game,slot,data.action);room.version++;
  }else if(data.type==='next'){
   if(room.game.won&&room.game.level<100){room.game=createGame(room.game.level+1);room.version++;}
  }else if(data.type!=='state')return send(res,400,{error:'Неизвестный запрос'});
- return send(res,200,{game:room.game,version:room.version,partner:!!room.tokens[1],online:room.seen.map(t=>Date.now()-t<15000)});
+ if(room.bot){room.seen[1]=Date.now();if(botStep(room.game))room.version++;}
+ return send(res,200,{bot:!!room.bot,game:room.game,version:room.version,partner:!!room.tokens[1],online:room.seen.map(t=>Date.now()-t<15000)});
  }catch{return send(res,400,{error:'Не удалось прочитать запрос'});}
 });
 const cleanup=setInterval(()=>{for(const [code,r] of rooms)if(Date.now()-r.updated>30*60*1000)rooms.delete(code);limits.clear();},60000);cleanup.unref();

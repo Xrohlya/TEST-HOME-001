@@ -18,3 +18,17 @@ function act(game,slot,action){
  game.won=!game.roots.length&&!game.buds.length;return game;
 }
 module.exports={createGame,act,nearby};
+function botStep(game){
+ if(game.won||!game.buds.length)return false;
+ const start=game.players[1],around=nearby(start,game.w,game.h);
+ if(game.buds.some(i=>around.includes(i))){act(game,1,'power');return true;}
+ const queue=[start],prev=new Map([[start,null]]);let target;
+ for(let q=0;q<queue.length;q++){
+  const p=queue[q];if(game.buds.some(i=>nearby(p,game.w,game.h).includes(i))){target=p;break;}
+  for(const i of nearby(p,game.w,game.h).slice(1))if(!prev.has(i)&&!game.walls.includes(i)&&!game.rocks.includes(i)){prev.set(i,p);queue.push(i);}
+ }
+ if(target===undefined)return false;
+ let next=target;while(prev.get(next)!==start)next=prev.get(next);
+ const d=next-start;act(game,1,d===1?'right':d===-1?'left':d===game.w?'down':'up');return true;
+}
+module.exports.botStep=botStep;
