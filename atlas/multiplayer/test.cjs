@@ -36,3 +36,19 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
  const blocked=createGame(1,1);blocked.players=[0];blocked.walls=[1,9];blocked.rocks=[];blocked.zombies=[2];const hp=blocked.health[0];stepZombies(blocked);assert.equal(blocked.health[0],hp,'Cannot attack through walls');
  console.log('PASS: three lives, damage cap, pursuit, walls, nearby punch, downed players, team defeat and reset.');
 }
+{
+ for(let level=1;level<=100;level++){
+  const g=createGame(level,1,null,true);assert(g.solo);assert.equal(g.health[0],3);assert(g.zombies.length>0);
+  act(g,0,'power');assert(!g.won,'Solo requires defeating zombies, not empty team objectives');
+  for(const target of [...g.zombies]){
+   if(!g.zombies.includes(target))continue;
+   const queue=[g.players[0]],prev=new Map([[g.players[0],null]]);
+   for(let q=0;q<queue.length;q++)for(const p of nearby(queue[q],9,7).slice(1))if(!g.walls.includes(p)&&!prev.has(p)){prev.set(p,queue[q]);queue.push(p);}
+   assert(prev.has(target));const route=[];for(let p=target;p!==g.players[0];p=prev.get(p))route.unshift(p);
+   for(const p of route){const d=p-g.players[0],dir=d===1?'right':d===-1?'left':d===9?'down':'up';act(g,0,dir);if(g.players[0]!==p){act(g,0,'power');act(g,0,dir);}}
+   act(g,0,'hit');
+  }
+  assert(g.won,'Solo map '+level+' is completable');
+ }
+ console.log('PASS: 100 solo levels; three lives; movement without allies; victory requires defeating all zombies.');
+}
