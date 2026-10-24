@@ -46,3 +46,8 @@ for(const id of Object.keys(heroes))for(let n=1;n<=100;n++){
 }
 `,mock);
 console.log('PASS: played all 3,200 stages through real game actions; level completion only after stage eight.');
+for(let stage=1;stage<=8;stage++){
+ const worm=makeLevel('worm',100,stage),dragon=makeLevel('dragon',100,stage),cloud=makeLevel('cloud',100,stage),stars=makeLevel('octopus',100,stage);
+ assert.equal(worm.items.size,35);assert([...worm.rockHp.values()].every(hp=>hp===9));assert([...dragon.budHp.values()].every(hp=>hp===9));assert(dragon.items.size>17);assert.equal(cloud.maxMistakes,3);assert.equal(stars.hints,0);assert.equal(stars.maxMoves,stars.solution.size);
+}
+console.log('PASS: difficulty 9000 final rules across all eight stages.');

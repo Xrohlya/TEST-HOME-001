@@ -35,21 +35,21 @@ function buildStage(id,n,stage,salt=0){
   // Early levels have more shortcuts; later levels need careful route planning.
   const walls=new Set(Array.from({length:w*h},(_,i)=>i).filter(i=>!floor.has(i)));
   for(const i of shuffle([...walls],random).slice(0,Math.max(0,12-Math.floor(n/8)))){walls.delete(i);floor.add(i);}
-  const spots=shuffle([...floor].filter(i=>i!==0),random),count=5+Math.floor(n/8),items=new Set(spots.slice(0,count));
-  const rocks=new Set(id==='worm'?spots.slice(count,count+5+Math.floor(n/7)):[]);
+  const spots=shuffle([...floor].filter(i=>i!==0),random),count=n===100?(id==='worm'?Math.min(35,spots.length):spots.length):5+Math.floor(n/8),items=new Set(spots.slice(0,count));
+  const rocks=new Set(id==='worm'?spots.slice(count,n===100?spots.length:count+5+Math.floor(n/7)):[]);
   const strength=1+Math.floor((n-1)/35);
-  return{w,h,player:0,dir:1,items,walls,rocks,rockHp:new Map([...rocks].map(i=>[i,1+Math.floor(random()*strength)])),budHp:new Map([...items].map(i=>[i,1+Math.floor(random()*strength)])),bloom:new Set(),target:count,moves:0};
+  return{w,h,player:0,dir:1,items,walls,rocks,rockHp:new Map([...rocks].map(i=>[i,n===100?9:1+Math.floor(random()*strength)])),budHp:new Map([...items].map(i=>[i,n===100?9:1+Math.floor(random()*strength)])),bloom:new Set(),target:count,moves:0};
  }
  if(id==='cloud'){
   const count=n===100?60:4+Math.floor((n-1)/7),pool=['🌙','⭐','🌈','☁️','🪐','💎','🎈','🦋','🌸','🍀','☀️','❄️','🍎','🚀','🎵','🐚','🍄','⚡','🐱','🐶','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐞','🦗','🕷','🦂','🐢','🐍','🦎','🐙','🦑','🦀','🐠','🐟','🐬','🐳','🦈','🐊','🐘','🦒','🦓','🦔'];
   const symbols=shuffle(pool,random).slice(0,count),cards=shuffle([...symbols,...symbols],random);
   if(n===100)cards.splice(60,0,null);
-  return{w:n===100?11:count>10?6:4,h:n===100?11:Math.ceil(count*2/(count>10?6:4)),cards,opened:[],matched:new Set(),moves:0,mistakes:0,maxMistakes:Math.max(4,Math.ceil(count*(1.8-n/100)))};
+  return{w:n===100?11:count>10?6:4,h:n===100?11:Math.ceil(count*2/(count>10?6:4)),cards,opened:[],matched:new Set(),moves:0,mistakes:0,maxMistakes:n===100?3:Math.max(4,Math.ceil(count*(1.8-n/100)))};
  }
  const size=n===100?11:3+Math.floor((n-1)/25),cells=Array(size*size).fill(true),solution=new Set();
  for(const i of shuffle(Array.from({length:cells.length},(_,i)=>i),random).slice(0,1+Math.floor(random()*(cells.length-1)))){neighbors(i,size,size).forEach(j=>cells[j]=!cells[j]);solution.add(i);}
  if(cells.every(Boolean)){neighbors(0,size,size).forEach(j=>cells[j]=!cells[j]);solution.has(0)?solution.delete(0):solution.add(0);}
- return{w:size,h:size,cells,solution,moves:0,maxMoves:solution.size+Math.max(3,12-Math.floor(n/10)),hints:Math.max(1,3-Math.floor(n/35))};
+ return{w:size,h:size,cells,solution,moves:0,maxMoves:solution.size+(n===100?0:Math.max(3,12-Math.floor(n/10))),hints:n===100?0:Math.max(1,3-Math.floor(n/35))};
 }
 
 function completeStage(){if(state.stage<8){const nextStage=state.stage+1;start(nextStage);message('✦ Испытание пройдено! Уровень '+level+', испытание '+nextStage+' из 8.');}else saveWin();}
@@ -57,7 +57,7 @@ function message(text){$('#status').textContent=text;}
 function lose(text){finished=true;$('#next').disabled=true;message(text+' Нажми «Заново» и попробуй ещё!');render();}
 function saveWin(){if(finished)return;finished=true;completed[hero+':'+level]=true;try{localStorage.setItem('atlas-games-eight-v2',JSON.stringify(completed));}catch{}$('#next').disabled=level===100;message(level===100?'🏆 Уровень 100 пройден! Можно выбрать другого героя или вернуться к другим уровням.':'🎉 Уровень пройден! Переходи к следующему.');updateProgress();}
 function updateProgress(){const count=Array.from({length:100},(_,i)=>completed[hero+':'+(i+1)]).filter(Boolean).length;$('#progress').textContent='Уровень '+level+' / 100 · Испытание '+state.stage+' / 8 · Пройдено: '+count;for(const option of $('#level').options)option.textContent=option.value+(completed[hero+':'+option.value]?' ✓':'');}
-function start(stage=1){state=makeLevel(hero,level,stage);finished=false;$('#title').textContent=heroes[hero].title;$('#world').textContent=heroes[hero].world;$('#instructions').textContent='В каждом уровне 8 испытаний. На 100-м уровне поле 11 × 11. '+heroes[hero].help+' '+(hero==='worm'?'Тёмные стены непроходимы. Крепким камням нужно несколько огненных плевков.':hero==='dragon'?'Обходи колючие заросли. Крепкие бутоны требуют нескольких цветочных дыханий.':hero==='cloud'?'Ошибок можно сделать не больше '+state.maxMistakes+'. Запоминай открытые сны!':'На этот уровень: '+state.maxMoves+' ходов и '+state.hints+' подсказок.');$('#controls').hidden=hero==='cloud'||hero==='octopus';$('#power').textContent=heroes[hero].power||'';$('#next').disabled=true;$('#level').value=level;message('Уровень '+level+', испытание '+state.stage+' из 8. Приключение начинается!');updateProgress();render();}
+function start(stage=1){state=makeLevel(hero,level,stage);finished=false;$('#title').textContent=heroes[hero].title;$('#world').textContent=heroes[hero].world+(level===100?' · СЛОЖНОСТЬ 9000':'');$('#instructions').textContent='В каждом уровне 8 испытаний. На 100-м уровне поле 11 × 11. '+heroes[hero].help+' '+(level===100?'Режим 9000: плотный лабиринт, по 9 попаданий на камень или бутон; в памяти — только 3 ошибки; в звёздах — ни одного лишнего хода и без подсказок. ':'')+(hero==='worm'?'Тёмные стены непроходимы. Крепким камням нужно несколько огненных плевков.':hero==='dragon'?'Обходи колючие заросли. Крепкие бутоны требуют нескольких цветочных дыханий.':hero==='cloud'?'Ошибок можно сделать не больше '+state.maxMistakes+'. Запоминай открытые сны!':'На этот уровень: '+state.maxMoves+' ходов и '+state.hints+' подсказок.');$('#controls').hidden=hero==='cloud'||hero==='octopus';$('#power').textContent=heroes[hero].power||'';$('#next').disabled=true;$('#level').value=level;message('Уровень '+level+', испытание '+state.stage+' из 8. Приключение начинается!');updateProgress();render();}
 function render(){
  const b=$('#board');b.replaceChildren();b.style.gridTemplateColumns='repeat('+state.w+',1fr)';b.className=(hero==='cloud'?'memory':hero==='octopus'?'lights':'')+(level===100?' final-grid':'');
  const total=hero==='cloud'?state.cards.length:state.w*state.h;
