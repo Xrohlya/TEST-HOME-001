@@ -23,3 +23,16 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
  const next=createGame(2,3,g.roles);assert(!next.teleportUsed[2]);assert.equal(next.roles[2],'vereti');
  console.log('PASS: Vereti eats rocks and notes; teleport rejects occupied cells, works once, survives role switches and resets on the next level.');
 }
+{
+ const {stepZombies}=require(__dirname+'/engine.cjs');
+ const g=createGame(1,2);g.walls=[];g.rocks=[];g.players=[0,62];g.zombies=[1,9];
+ assert.deepEqual(g.health,[3,3]);stepZombies(g);assert.equal(g.health[0],2,'Two zombies cause at most one damage per tick');
+ stepZombies(g);stepZombies(g);assert.equal(g.health[0],0);act(g,0,'right');assert.equal(g.players[0],0,'Downed player cannot move');
+ g.players[1]=1;g.zombies=[2];g.health[1]=3;act(g,1,'hit');assert.equal(g.zombies.length,0,'Adjacent punch defeats zombie');
+ g.zombies=[60];act(g,1,'hit');assert.equal(g.zombies.length,1,'Punch cannot reach distant zombie');
+ const previous=g.zombies[0];stepZombies(g);assert.notEqual(g.zombies[0],previous,'Zombie follows living player');
+ g.zombies=[2];g.players[1]=1;g.health[1]=1;stepZombies(g);assert(g.lost,'All players down ends level');
+ const reset=createGame(1,2,g.roles);assert.deepEqual(reset.health,[3,3]);assert(!reset.lost);
+ const blocked=createGame(1,1);blocked.players=[0];blocked.walls=[1,9];blocked.rocks=[];blocked.zombies=[2];const hp=blocked.health[0];stepZombies(blocked);assert.equal(blocked.health[0],hp,'Cannot attack through walls');
+ console.log('PASS: three lives, damage cap, pursuit, walls, nearby punch, downed players, team defeat and reset.');
+}
