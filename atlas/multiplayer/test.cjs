@@ -26,12 +26,12 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
 {
  const {stepZombies}=require(__dirname+'/engine.cjs');
  const g=createGame(1,2);g.walls=[];g.rocks=[];g.players=[0,62];g.zombies=[1,9];
- assert.deepEqual(g.health,[3,3]);stepZombies(g);assert.equal(g.health[0],2,'Two zombies cause at most one damage per tick');
- stepZombies(g);stepZombies(g);assert.equal(g.health[0],0);act(g,0,'right');assert.equal(g.players[0],0,'Downed player cannot move');
+ assert.deepEqual(g.health,[3,3]);stepZombies(g);assert.equal(g.health[0],3,'Wind-up gives time to dodge');stepZombies(g);assert.equal(g.health[0],2,'Two zombies cause at most one damage per tick');
+ for(let tick=0;tick<6&&g.health[0]>0;tick++)stepZombies(g);assert.equal(g.health[0],0);act(g,0,'right');assert.equal(g.players[0],0,'Downed player cannot move');
  g.players[1]=1;g.zombies=[2];g.health[1]=3;act(g,1,'hit');assert.equal(g.zombies.length,0,'Adjacent punch defeats zombie');
  g.zombies=[60];act(g,1,'hit');assert.equal(g.zombies.length,1,'Punch cannot reach distant zombie');
  const previous=g.zombies[0];stepZombies(g);assert.notEqual(g.zombies[0],previous,'Zombie follows living player');
- g.zombies=[2];g.players[1]=1;g.health[1]=1;stepZombies(g);assert(g.lost,'All players down ends level');
+ g.zombies=[2];g.players[1]=1;g.health[1]=1;g.zombieThreats={};stepZombies(g);stepZombies(g);assert(g.lost,'All players down ends level');
  const reset=createGame(1,2,g.roles);assert.deepEqual(reset.health,[3,3]);assert(!reset.lost);
  const blocked=createGame(1,1);blocked.players=[0];blocked.walls=[1,9];blocked.rocks=[];blocked.zombies=[2];const hp=blocked.health[0];stepZombies(blocked);assert.equal(blocked.health[0],hp,'Cannot attack through walls');
  console.log('PASS: three lives, damage cap, pursuit, walls, nearby punch, downed players, team defeat and reset.');
@@ -74,4 +74,8 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
  }
  for(const role of ['worm','dragon','vereti']){const g=createGame(1,1,[role],true);g.walls=[];g.rocks=[];g.roots=[1];g.buds=[2];g.notes=[3];g.zombies=[200];act(g,0,'right');act(g,0,'right');act(g,0,'right');assert(!g.roots.length&&!g.buds.length&&!g.notes.length,'Any hero can collect all food types');}
  console.log('PASS: both objectives required in solo and team modes; any hero can collect food.');
+}
+{
+ const {stepZombies}=require(__dirname+'/engine.cjs');const g=createGame(1,1,null,true);g.walls=[];g.rocks=[];g.zombies=[1];g.players=[0];stepZombies(g);assert.equal(g.health[0],3);assert.equal(g.zombieThreats[1],0);g.players[0]=40;stepZombies(g);assert.equal(g.health[0],3,'Moving out of reach dodges a prepared attack');assert(!Object.hasOwn(g.zombieThreats,1));
+ console.log('PASS: attack wind-up is visible and moving out of reach avoids damage.');
 }
