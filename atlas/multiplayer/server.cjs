@@ -16,18 +16,21 @@ const server=http.createServer(async(req,res)=>{
   const auth=token();rooms.set(code,{tokens:[auth],seen:[Date.now()],updated:Date.now(),version:0,game:createGame(1,1)});return send(res,200,{code,token:auth,slot:0});
  }
  const code=String(data.code||'').toUpperCase(),room=rooms.get(code);if(!room)return send(res,404,{error:'Комната не найдена или закрылась. Создай новую.'});
- if(data.type==='join'){const auth=token(),slot=room.tokens.length;room.tokens.push(auth);room.seen.push(Date.now());room.game.players.push(0);room.game.directions.push(1);room.updated=Date.now();room.version++;return send(res,200,{code,token:auth,slot});}
+ if(data.type==='join'){const auth=token(),slot=room.tokens.length;room.tokens.push(auth);room.seen.push(Date.now());room.game.players.push(0);room.game.directions.push(1);room.game.roles.push(slot%2===0?'worm':'dragon');room.game.teleportUsed.push(false);room.updated=Date.now();room.version++;return send(res,200,{code,token:auth,slot});}
  const slot=room.tokens.indexOf(data.token);if(slot<0||!data.token)return send(res,403,{error:'Войди в комнату снова.'});room.seen[slot]=Date.now();room.updated=Date.now();
- if(data.type==='bot'){
+ if(data.type==='hero'){
+  if(!['worm','dragon','vereti'].includes(data.hero))return send(res,400,{error:'Неизвестный персонаж'});
+  room.game.roles[slot]=data.hero;room.version++;
+ }else if(data.type==='bot'){
   if(slot!==0)return send(res,403,{error:'Бота может позвать создатель комнаты.'});
   if(room.tokens.length>1)return send(res,409,{error:'Союзник уже в комнате.'});
-  room.tokens[1]='bot:'+token();room.game.players.push(0);room.game.directions.push(1);room.seen.push(Date.now());room.bot=true;room.version++;
+  room.tokens[1]='bot:'+token();room.game.players.push(0);room.game.directions.push(1);room.game.roles.push('dragon');room.game.teleportUsed.push(false);room.seen.push(Date.now());room.bot=true;room.version++;
  }else if(data.type==='move'){
   if(!room.tokens[1])return send(res,409,{error:'Сначала дождись второго игрока.'});
-  if(!['up','down','left','right','power'].includes(data.action))return send(res,400,{error:'Неизвестное действие'});
-  act(room.game,slot,data.action);room.version++;
+  if(!['up','down','left','right','power','teleport'].includes(data.action))return send(res,400,{error:'Неизвестное действие'});
+  act(room.game,slot,data.action,data.target);room.version++;
  }else if(data.type==='next'){
-  if(room.game.won&&room.game.level<100){room.game=createGame(room.game.level+1,room.tokens.length);room.version++;}
+  if(room.game.won&&room.game.level<100){room.game=createGame(room.game.level+1,room.tokens.length,[...room.game.roles]);room.version++;}
  }else if(data.type!=='state')return send(res,400,{error:'Неизвестный запрос'});
  if(room.bot){room.seen[1]=Date.now();if(botStep(room.game))room.version++;}
  return send(res,200,{bot:!!room.bot,game:room.game,version:room.version,partner:room.tokens.length>1,teamSize:room.tokens.length,online:room.seen.map(t=>Date.now()-t<15000)});

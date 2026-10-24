@@ -13,3 +13,13 @@ for(let n=1;n<=100;n++){
  assert(g.won,'Bot must finish buds on level '+n);
 }
 console.log('PASS: bot finds and opens every bud across all 100 mazes.');
+{
+ const g=createGame(1,3,['worm','dragon','vereti']);g.walls=[];g.rocks=[1];g.notes=[1,3];g.roots=[40];g.buds=[41];
+ act(g,2,'right');assert.equal(g.players[2],1);assert(!g.rocks.includes(1));assert(!g.notes.includes(1));
+ g.walls=[2];act(g,2,'teleport',2);assert(!g.teleportUsed[2]);act(g,2,'teleport',0);assert(!g.teleportUsed[2]);
+ act(g,0,'teleport',3);assert.equal(g.players[0],0);
+ act(g,2,'teleport',3);assert.equal(g.players[2],3);assert(g.teleportUsed[2]);assert(!g.notes.includes(3));
+ act(g,2,'teleport',4);assert.equal(g.players[2],3);g.roles[2]='worm';g.roles[2]='vereti';act(g,2,'teleport',4);assert.equal(g.players[2],3);
+ const next=createGame(2,3,g.roles);assert(!next.teleportUsed[2]);assert.equal(next.roles[2],'vereti');
+ console.log('PASS: Vereti eats rocks and notes; teleport rejects occupied cells, works once, survives role switches and resets on the next level.');
+}
