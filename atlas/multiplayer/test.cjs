@@ -3,12 +3,12 @@ for(let n=1;n<=100;n++){
  const g=createGame(n);const moveTo=(target,slot)=>{const seen=new Map([[g.players[slot],null]]),queue=[g.players[slot]];for(let q=0;q<queue.length;q++)for(const i of nearby(queue[q],g.w,g.h).slice(1)){if(!g.walls.includes(i)&&!seen.has(i)){seen.set(i,queue[q]);queue.push(i);}}assert(seen.has(target));const path=[];for(let i=target;i!==g.players[slot];i=seen.get(i))path.unshift(i);for(const i of path){const d=i-g.players[slot],dir=d===1?'right':d===-1?'left':d===g.w?'down':'up';act(g,slot,dir);if(g.players[slot]!==i){assert.equal(slot,0);act(g,slot,'power');act(g,slot,dir);}assert.equal(g.players[slot],i);}};
  // Worm clears every rock, then collects roots; dragon completes the shared objective.
  for(const rock of [...g.rocks])moveTo(rock,0);for(const root of [...g.roots])moveTo(root,0);assert.equal(g.won,false);
- for(const bud of [...g.buds]){if(!g.buds.includes(bud))continue;moveTo(bud,1);act(g,1,'power');}assert(g.won);
+ for(const bud of [...g.buds]){if(!g.buds.includes(bud))continue;moveTo(bud,1);act(g,1,'power');}for(const note of [...g.notes])moveTo(note,0);for(const zombie of [...g.zombies]){if(g.won)break;moveTo(zombie,0);act(g,0,'hit');}assert(g.won);
 }
-console.log('PASS: all 100 co-op mazes reachable and winnable only through both heroes.');
+console.log('PASS: all 100 co-op mazes reachable and completable with all food and zombies cleared.');
 const {botStep}=require(__dirname+'/engine.cjs');
 for(let n=1;n<=100;n++){
- const g=createGame(n);g.rocks=[];g.roots=[];let steps=0;
+ const g=createGame(n);g.rocks=[];g.roots=[];g.notes=[];g.zombies=[];let steps=0;
  while(!g.won&&steps++<10000)botStep(g);
  assert(g.won,'Bot must finish buds on level '+n);
 }
@@ -40,8 +40,8 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
  for(let level=1;level<=100;level++){
   const g=createGame(level,1,null,true);assert(g.solo);assert.equal(g.health[0],3);assert(g.zombies.length>0);
   act(g,0,'power');assert(!g.won,'Solo requires defeating zombies, not empty team objectives');
-  for(const target of [...g.zombies]){
-   if(!g.zombies.includes(target))continue;
+  for(const target of [...g.rocks,...g.roots,...g.buds,...g.notes,...g.zombies]){
+   if(g.won)break;
    const queue=[g.players[0]],prev=new Map([[g.players[0],null]]);
    for(let q=0;q<queue.length;q++)for(const p of nearby(queue[q],g.w,g.h).slice(1))if(!g.walls.includes(p)&&!prev.has(p)){prev.set(p,queue[q]);queue.push(p);}
    assert(prev.has(target));const route=[];for(let p=target;p!==g.players[0];p=prev.get(p))route.unshift(p);
@@ -50,7 +50,7 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
   }
   assert(g.won,'Solo map '+level+' is completable');
  }
- console.log('PASS: 100 solo levels; three lives; movement without allies; victory requires defeating all zombies.');
+ console.log('PASS: 100 solo levels; three lives; movement without allies; victory requires all food and zombies.');
 }
 {
  const totals=new Set();
@@ -63,4 +63,15 @@ console.log('PASS: bot finds and opens every bud across all 100 mazes.');
  assert.deepEqual([...totals].sort((a,b)=>a-b),[9,10,11,12]);
  const g=createGame(1,1,null,true);g.walls=[];g.rocks=[];g.players[0]=19;act(g,0,'right');assert.equal(g.players[0],19,'No horizontal row wrapping on a 20-wide board');act(g,0,'down');assert.equal(g.players[0],39);
  console.log('PASS: 20x20 maps, 9–12 distinct accessible zombies across 100 solo and team levels, and correct movement boundaries.');
+}
+{
+ for(const solo of [false,true]){
+  const g=createGame(1,1,['worm'],solo);g.walls=[];g.rocks=[];g.roots=[1];g.buds=[];g.notes=[];g.zombies=[20];
+  act(g,0,'hit');assert.equal(g.zombies.length,0);assert(!g.won,'Killing all zombies is not enough while food remains');
+  act(g,0,'right');assert(g.won,'Final food completes both objectives');
+  const h=createGame(1,1,['worm'],solo);h.walls=[];h.rocks=[];h.roots=[1];h.buds=[];h.notes=[];h.zombies=[2];
+  act(h,0,'right');assert(!h.won,'All food collected is not enough while a zombie remains');act(h,0,'hit');assert(h.won);
+ }
+ for(const role of ['worm','dragon','vereti']){const g=createGame(1,1,[role],true);g.walls=[];g.rocks=[];g.roots=[1];g.buds=[2];g.notes=[3];g.zombies=[200];act(g,0,'right');act(g,0,'right');act(g,0,'right');assert(!g.roots.length&&!g.buds.length&&!g.notes.length,'Any hero can collect all food types');}
+ console.log('PASS: both objectives required in solo and team modes; any hero can collect food.');
 }
